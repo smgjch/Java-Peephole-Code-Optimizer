@@ -3,34 +3,27 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.*;
 import java.util.function.BiFunction;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.bcel.classfile.ClassParser;
 import org.apache.bcel.classfile.Code;
 import org.apache.bcel.classfile.JavaClass;
 import org.apache.bcel.classfile.Method;
-import org.apache.bcel.generic.ClassGen;
-import org.apache.bcel.generic.ConstantPoolGen;
-import org.apache.bcel.generic.InstructionHandle;
-import org.apache.bcel.generic.InstructionList;
-import org.apache.bcel.generic.InstructionTargeter;
+import org.apache.bcel.generic.*;
 import org.apache.bcel.util.InstructionFinder;
-import org.apache.bcel.generic.MethodGen;
-import org.apache.bcel.generic.TargetLostException;
-import org.apache.bcel.generic.LDC;
-import org.apache.bcel.generic.LDC2_W;
 import org.apache.bcel.Constants;
 
 public class ConstantFolder
 {
 	ClassParser parser = null;
 	ClassGen gen = null;
-
+	ConstantPoolGen cpgen;
 	JavaClass original = null;
 	JavaClass optimized = null;
+	boolean in_loop;
+	ArrayList<InstructionHandle> loaded_instructions;
+	Stack<Number> valuesStack;
 
 	public ConstantFolder(String classFilePath)
 	{
@@ -38,152 +31,215 @@ public class ConstantFolder
 			this.parser = new ClassParser(classFilePath);
 			this.original = this.parser.parse();
 			this.gen = new ClassGen(this.original);
+			this.cpgen = this.gen.getConstantPool();
+			this.in_loop = false;
+			this.loaded_instructions = new ArrayList<InstructionHandle>();
+			this.valuesStack = new Stack<Number>();
+
 		} catch(IOException e){
 			e.printStackTrace();
 		}
 	}
-
-	private boolean simpleFold(InstructionList instList, ClassGen cgen, ConstantPoolGen cpgen) {
-		boolean changed = false;
-		InstructionFinder f = new InstructionFinder(instList);
-		String pattern = "(LDC|LDC_W|LDC2_W) (LDC|LDC_W|LDC2_W) (IADD|ISUB|IMUL|IDIV|FADD|FSUB|FMUL|FDIV|DADD|DSUB|DMUL|DDIV|LADD|LSUB|LMUL|LDIV)";
-		for (Iterator<InstructionHandle[]> it = f.search(pattern); it.hasNext(); ) {
-			InstructionHandle[] match = it.next();
-			try {
-
-				Object value1 = ((LDC) match[0].getInstruction()).getValue(cpgen);
-				Object value2 = ((LDC) match[1].getInstruction()).getValue(cpgen);
-				Number result = null;
-
-				// perform correct operation on values
-				Short opcode_type = match[2].getInstruction().getOpcode();
-				if (opcode_type == Constants.IADD || opcode_type == Constants.ISUB || opcode_type == Constants.IMUL || opcode_type == Constants.IDIV) {
-					result = intArithmetic(value1, value2, opcode_type);
-				} else if (opcode_type == Constants.FADD || opcode_type == Constants.FSUB || opcode_type == Constants.FMUL || opcode_type == Constants.FDIV){
-					result = floatArithmetic(value1, value2, opcode_type);
-				} else if (opcode_type == Constants.DADD || opcode_type == Constants.DSUB || opcode_type == Constants.DMUL || opcode_type == Constants.DDIV){
-					result = doubleArithmetic(value1, value2, opcode_type);
-				} else if (opcode_type == Constants.LADD || opcode_type == Constants.LSUB || opcode_type == Constants.LMUL || opcode_type == Constants.LDIV){
-					result = longArithmetic(value1, value2, opcode_type);
-				}
-
-				if (result != null) {
-					InstructionHandle ih;
-					changed = true;
-					
-					// load results onto stack and delete old instructions
-					if (result instanceof Integer) {
-						ih = instList.insert(match[0], new LDC(cpgen.addInteger(result.intValue())));
-					} else if (result instanceof Float) {
-						ih = instList.insert(match[0], new LDC(cpgen.addFloat(result.floatValue())));
-					} else if (result instanceof Double) {
-						ih = instList.insert(match[0], new LDC2_W(cpgen.addDouble(result.doubleValue())));
-					} else if (result instanceof Long) {
-						ih = instList.insert(match[0], new LDC2_W(cpgen.addLong(result.longValue())));
-					} else {
-						continue;
-					}
-					
-					instList.delete(match[0], match[2]);
-					instList.redirectBranches(match[0], ih);
-				}
-			} catch (TargetLostException e) {
-				// thrown when one or multiple disposed instructions are still being referenced by an InstructionTargeter object
-				for (InstructionHandle target : e.getTargets()) {
-					for (InstructionTargeter targeter : target.getTargeters()) {
-						targeter.updateTarget(target, null);
-					}
-				}
-			} catch (ClassCastException e) {
-				// Cast fail
-			}
-		}
-		return changed;
-
+	public void reset(){
+		this.gen = new ClassGen(this.original);
+		this.cpgen = this.gen.getConstantPool();
+		this.in_loop = false;
+		this.loaded_instructions = new ArrayList<InstructionHandle>();
 	}
 
-	private Number intArithmetic(Object value1, Object value2, Short opcode_type) {
-		if (value1 instanceof Integer && value2 instanceof Integer) {
-			if (opcode_type == Constants.IADD){
-				return ((Integer) value1) + ((Integer) value2);
-			} else if (opcode_type == Constants.ISUB){
-				return ((Integer) value1) - ((Integer) value2);
-			} else if (opcode_type == Constants.IMUL){
-				return ((Integer) value1) * ((Integer) value2);
-			} else{
-				return ((Integer) value1) / ((Integer) value2);
-			}
+	private void handle_instruction(InstructionHandle handle, InstructionList instructionList){
+		Instruction instruction = handle.getInstruction();
+
+		// Operation Instructions (Instructions that use the previous 2 loaded values)
+		if (instruction instanceof ArithmeticInstruction){
+			handleArithmetic(handle, instructionList);
 		}
-		return null;
+
+		if (instruction instanceof LCMP){
+			handleLongComparison(handle, instructionList);
+		}
+		else if (instruction instanceof IfInstruction){
+			handleComparison(handle, instructionList);
+		}
+
+		if (instruction instanceof GotoInstruction){
+			handleGoTo(handle, instructionList);
+		}
+
+		if (instruction instanceof StoreInstruction){
+			handleStore(handle);
+		}
+
+		if (is_load_constant_instruction(instruction)){
+			handleLoad(handle);
+		}
+		else if (instruction instanceof LoadInstruction){
+			handleVariableLoad(handle);
+		}
+		else if (instruction instanceof ConversionInstruction){
+			handleConversion(handle, instructionList);
+		}
+		else{
+			this.in_loop = false;
+		}
+		instructionList.setPositions(true);
 	}
 
-	private Number floatArithmetic(Object value1, Object value2, Short opcode_type) {
-		if (value1 instanceof Float && value2 instanceof Float) {
-			if (opcode_type == Constants.FADD){
-				return ((Float) value1) + ((Float) value2);
-			} else if (opcode_type == Constants.FSUB){
-				return ((Float) value1) - ((Float) value2);
-			} else if (opcode_type == Constants.FMUL){
-				return ((Float) value1) * ((Float) value2);
-			} else{
-				return ((Float) value1) / ((Float) value2);
-			}
+	private static final Set<Class<? extends Instruction>> CONSTANT_INSTRUCTIONS = Set.of(
+			LDC.class, LDC2_W.class, SIPUSH.class, BIPUSH.class,
+			ICONST.class, FCONST.class, DCONST.class, LCONST.class
+	);
+
+	private static boolean is_load_constant_instruction(Instruction instruction){
+		return CONSTANT_INSTRUCTIONS.stream().anyMatch(c -> c.isInstance(instruction));
+	}
+
+	//                     <==================== Handling Instructions ====================>
+
+	// Method that converts the value on the top of the stack to another type.
+	private void handleConversion(InstructionHandle handle, InstructionList instructionList) {
+		if (is_load_constant_instruction(this.loaded_instructions.get(this.loaded_instructions.size() - 1).getInstruction()) || !this.in_loop) {
+
+			valuesStack.push(to_value(handle.getInstruction(), valuesStack.pop()));
+
+// Todo: loadInstructions
+			removeHandle(instructionList, loadInstructions.pop()); // remove load instruction
+			handle.setInstruction(createLoadInstruction(valuesStack.peek(), cpgen)); // change conversion instruction with load.
+			loadInstructions.push(handle); // push new load instruction onto the loadInstruction stack.
+
+		}
+	}
+	private static Number to_value(Instruction instruction, Number value) {
+		if (instruction instanceof D2I || instruction instanceof F2I || instruction instanceof L2I){
+			return value.intValue();
+		}
+		else if (instruction instanceof I2L || instruction instanceof D2L || instruction instanceof F2L){
+			return value.longValue();
+		}
+		else if (instruction instanceof I2D || instruction instanceof L2D || instruction instanceof F2D){
+			return value.doubleValue();
+		}
+		else if (instruction instanceof I2F || instruction instanceof L2F || instruction instanceof D2F){
+			return value.floatValue();
 		}
 		return null;
 	}
 
-	private Number doubleArithmetic(Object value1, Object value2, Short opcode_type) {
-		if (value1 instanceof Double && value2 instanceof Double) {
-			if (opcode_type == Constants.DADD){
-				return ((Double) value1) + ((Double) value2);
-			} else if (opcode_type == Constants.DSUB){
-				return ((Double) value1) - ((Double) value2);
-			} else if (opcode_type == Constants.DMUL){
-				return ((Double) value1) * ((Double) value2);
-			} else{
-				return ((Double) value1) / ((Double) value2);
-			}
+	private void removeHandle(InstructionList instructionList, InstructionHandle handle) {
+		InstructionHandle next = handle.getNext(); // used to get the next instruction if it's a target.
+		try {
+			instructionList.delete(handle);
+		} catch (TargetLostException e) {
+			handleTargetLostException(e, next);
 		}
-		return null;
 	}
 
-	private Number longArithmetic(Object value1, Object value2, Short opcode_type) {
-		if (value1 instanceof Long && value2 instanceof Long) {
-			if (opcode_type == Constants.LADD){
-				return ((Long) value1) + ((Long) value2);
-			} else if (opcode_type == Constants.LSUB){
-				return ((Long) value1) - ((Long) value2);
-			} else if (opcode_type == Constants.LMUL){
-				return ((Long) value1) * ((Long) value2);
-			} else{
-				return ((Long) value1) / ((Long) value2);
+	private void handleTargetLostException(TargetLostException e, InstructionHandle next) {
+		for (InstructionHandle target : e.getTargets()) {
+			for (InstructionTargeter destination : target.getTargeters()) {
+				destination.updateTarget(target, next);
 			}
 		}
-		return null;
+	}
+
+	
+	// Method that checks whether to delete the Else Branch of a IfInstruction, and deletes it if necessary.
+	private void handleGoTo(InstructionHandle handle, InstructionList instructionList) {
+		if (deleteElseBranch){
+			deleteElseBranch = false;
+			GotoInstruction instruction = (GotoInstruction) handle.getInstruction();
+			InstructionHandle targetHandle = instruction.getTarget();
+			removeHandle(instructionList, handle, targetHandle.getPrev());
+		}
+	}
+
+	private void handleLongComparison(InstructionHandle handle, InstructionList instructionList) {
+		if (blockOperationIfInLoop) return;
+
+		long first = (Long) valuesStack.pop();
+		long second = (Long) valuesStack.pop();
+
+		// LCMP returns -1, 0, 1.
+		int result = 0;
+		if (first > second) result = 1;
+		else if (first < second) result = -1;
+
+		removePreviousTwoLoadInstructions(instructionList);
+		handle.setInstruction(createLoadInstruction(result, cpgen));
+		loadInstructions.push(handle);
+		valuesStack.push(result);
+	}
+
+	private void handleComparison(InstructionHandle handle, InstructionList instructionList) {
+		if (blockOperationIfInLoop) return;
+
+		IfInstruction comparisonInstruction = (IfInstruction) handle.getInstruction();
+
+		if (getComparisonOutcome(instructionList, comparisonInstruction)) {
+			removeHandle(instructionList, handle);
+			deleteElseBranch = true;
+		} else {
+			// if outcome is false then remove the comparison, and remove the if branch (all instructions to target).
+			InstructionHandle targetHandle = comparisonInstruction.getTarget();
+			removeHandle(instructionList, handle, targetHandle.getPrev());
+		}
+	}
+
+	private void handleStore(InstructionHandle handle) {
+		Number value = valuesStack.pop();
+		loadInstructions.pop();
+		displayLog("[STORE] Storing Value: " + value);
+		int key = ((StoreInstruction) handle.getInstruction()).getIndex();
+		variables.put(key, value);
+	}
+
+	private void handleVariableLoad(InstructionHandle handle) {
+		int variableKey = ((LoadInstruction) handle.getInstruction()).getIndex();
+		valuesStack.push(variables.get(variableKey));
+		loadInstructions.push(handle);
+		displayLog("[LOAD_VARIABLE] Loaded Variable Value: " + valuesStack.peek());
+		// if not already blocking: block if this variable load is in a loop & the variable stores a value in the loop.
+		blockOperationIfInLoop = blockOperationIfInLoop || variableChangesInLoop(handle, variableKey);
+		displayLog("[BLOCK] Status: " + blockOperationIfInLoop);
+	}
+
+	private void handleLoad(InstructionHandle handle) {
+		valuesStack.push(getLoadConstantValue(handle.getInstruction(), cpgen));
+		loadInstructions.push(handle);
+		displayLog("[LOAD_CONSTANT] Loaded Constant Value: " + valuesStack.peek());
+	}
+
+	private void handleArithmetic(InstructionHandle handle, InstructionList instructionList) {
+		if (blockOperationIfInLoop) return; // if block operation is true, then skip this instruction.
+
+		Number second = valuesStack.pop(); // last load is on the top of the stack.
+		Number first = valuesStack.pop();
+		valuesStack.push(performArithmeticOperation(first, second, handle.getInstruction()));
+
+		displayLog("[ARITHMETIC_OPERATION] Calculated Value: " + valuesStack.peek() + " Pushed Onto Stack.");
+		condenseOperationInstructions(instructionList, handle, valuesStack.peek()); // using peek because it needs to be in stack.
 	}
 
 
-	private void optimizeMethod(ClassGen cgen, ConstantPoolGen cpgen, Method method) {
-		// add all the other optimisation stuff here like dynamic and constant folding
-        boolean changed = false;
-        MethodGen methodGen = new MethodGen(method, cgen.getClassName(), cpgen);
-        InstructionList instList = methodGen.getInstructionList();
+	private void method_process(Method m){
+		Code method_code = m.getCode();
+		InstructionList instructionList = new InstructionList(method_code.getCode());
 
-        do {
-            changed &= simpleFold(instList, cgen, cpgen);
+		MethodGen mgen = new MethodGen(m.getAccessFlags(), m.getReturnType(), m.getArgumentTypes(),
+				null, m.getName(), this.gen.getClassName(), instructionList, this.cpgen);
 
-            if (changed) {
-                instList.setPositions(true);
-                methodGen.setMaxStack();
-                methodGen.setMaxLocals();
-            }
-        } while (changed);
 
-        Method newMethod = methodGen.getMethod();
-        cgen.replaceMethod(method, newMethod);
+		for (InstructionHandle handle : instructionList.getInstructionHandles()) {
+			handle_instruction(handle, instructionList);
+		}
 
-        instList.dispose();
-    }
+
+//		instructionList.setPositions(true);
+		mgen.setMaxStack();
+		mgen.setMaxLocals();
+		Method newMethod = mgen.getMethod();
+		this.gen.replaceMethod(m, newMethod);
+	}
 
     private void optimize() {
         ClassGen cgen = new ClassGen(original);
@@ -191,13 +247,13 @@ public class ConstantFolder
 
         Method[] methods = cgen.getMethods();
         for (Method m : methods) {
-            optimizeMethod(cgen, cpgen, m);
+			method_process(m);
         }
 
-        this.optimized = cgen.getJavaClass();
+//        this.optimized = cgen.getJavaClass();
     }
 
-	
+
 	public void write(String optimisedFilePath)
 	{
 		this.optimize();
