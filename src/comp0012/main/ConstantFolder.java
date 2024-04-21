@@ -28,6 +28,7 @@ public class ConstantFolder
 	public ConstantFolder(String classFilePath)
 	{
 		try{
+
 			this.parser = new ClassParser(classFilePath);
 			this.original = this.parser.parse();
 			this.gen = new ClassGen(this.original);
@@ -93,8 +94,7 @@ public class ConstantFolder
 	private static boolean is_load_constant_instruction(Instruction instruction){
 		return CONSTANT_INSTRUCTIONS.stream().anyMatch(c -> c.isInstance(instruction));
 	}
-
-	//                     <==================== Handling Instructions ====================>
+	
 
 	// Method that converts the value on the top of the stack to another type.
 	private void handleConversion(InstructionHandle handle, InstructionList instructionList) {
@@ -103,7 +103,7 @@ public class ConstantFolder
 			valuesStack.push(to_value(handle.getInstruction(), valuesStack.pop()));
 
 // Todo: loadInstructions
-			removeHandle(instructionList, loadInstructions.pop()); // remove load instruction
+			removeHandle(instructionList, this.loaded_instructions.remove(list.size() - 1));
 			handle.setInstruction(createLoadInstruction(valuesStack.peek(), cpgen)); // change conversion instruction with load.
 			loadInstructions.push(handle); // push new load instruction onto the loadInstruction stack.
 
@@ -142,7 +142,7 @@ public class ConstantFolder
 		}
 	}
 
-	
+
 	// Method that checks whether to delete the Else Branch of a IfInstruction, and deletes it if necessary.
 	private void handleGoTo(InstructionHandle handle, InstructionList instructionList) {
 		if (deleteElseBranch){
