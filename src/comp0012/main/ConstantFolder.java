@@ -24,6 +24,7 @@ public class ConstantFolder
 	boolean in_loop;
 	ArrayList<InstructionHandle> loaded_instructions;
 	Stack<Number> valuesStack;
+	HashMap<Integer, Number> stored_variables;
 
 	public ConstantFolder(String classFilePath)
 	{
@@ -36,6 +37,7 @@ public class ConstantFolder
 			this.in_loop = false;
 			this.loaded_instructions = new ArrayList<InstructionHandle>();
 			this.valuesStack = new Stack<Number>();
+			this.stored_variables = new HashMap<Integer, Number>();
 
 		} catch(IOException e){
 			e.printStackTrace();
@@ -46,6 +48,8 @@ public class ConstantFolder
 		this.cpgen = this.gen.getConstantPool();
 		this.in_loop = false;
 		this.loaded_instructions = new ArrayList<InstructionHandle>();
+		this.valuesStack = new Stack<Number>();
+		this.stored_variables = new HashMap<Integer, Number>();
 	}
 
 	private void handle_instruction(InstructionHandle handle, InstructionList instructionList){
@@ -57,15 +61,15 @@ public class ConstantFolder
 		}
 
 		if (instruction instanceof LCMP){
-			handleLongComparison(handle, instructionList);
-		}
-		else if (instruction instanceof IfInstruction){
 			handleComparison(handle, instructionList);
 		}
+		// if (instruction instanceof IfInstruction){
+		// 	handleComparison(handle, instructionList);
+		// }
 
-		if (instruction instanceof GotoInstruction){
-			handleGoTo(handle, instructionList);
-		}
+		// if (instruction instanceof GotoInstruction){
+		// 	handleGoTo(handle, instructionList);
+		// }
 
 		if (instruction instanceof StoreInstruction){
 			handleStore(handle);
@@ -102,13 +106,37 @@ public class ConstantFolder
 
 			valuesStack.push(to_value(handle.getInstruction(), valuesStack.pop()));
 
-// Todo: loadInstructions
-			removeHandle(instructionList, this.loaded_instructions.remove(list.size() - 1));
-			handle.setInstruction(createLoadInstruction(valuesStack.peek(), cpgen)); // change conversion instruction with load.
-			loadInstructions.push(handle); // push new load instruction onto the loadInstruction stack.
+// Todo: loaded_instructions
+			InstructionHandle  instruction_removed = this.loaded_instructions.remove(this.loaded_instructions.size() - 1);
+			remove_handle(instructionList, instruction_removed); 
+
+			Instruction instruction_to_set = build_load(valuesStack.peek(), this.cpgen);
+			handle.setInstruction(instruction_to_set);
+
+			this.loaded_instructions.add(handle); 
 
 		}
 	}
+
+	private static Instruction build_load(Number value, ConstantPoolGen cpgen){
+		if (value instanceof Double){
+			return new LDC2_W(cpgen.addDouble((Double) value)); 
+		}
+		else if (value instanceof Integer){
+
+		    if ((Integer) value >= -1 && (Integer) value <= 5) return new ICONST((Integer) value);
+			return new LDC(cpgen.addInteger((Integer) value)); 
+		} 
+		else if (value instanceof Long){
+			return new LDC2_W(cpgen.addLong((Long) value)); 
+		} 
+		else if (value instanceof Float){
+			return new LDC(cpgen.addFloat((Float) value)); 
+		}
+		throw new IllegalStateException("Illegal");
+	}
+
+
 	private static Number to_value(Instruction instruction, Number value) {
 		if (instruction instanceof D2I || instruction instanceof F2I || instruction instanceof L2I){
 			return value.intValue();
@@ -125,16 +153,16 @@ public class ConstantFolder
 		return null;
 	}
 
-	private void removeHandle(InstructionList instructionList, InstructionHandle handle) {
-		InstructionHandle next = handle.getNext(); // used to get the next instruction if it's a target.
+	private void remove_handle(InstructionList instructionList, InstructionHandle handle) {
+		InstructionHandle next = handle.getNext(); 
 		try {
 			instructionList.delete(handle);
 		} catch (TargetLostException e) {
-			handleTargetLostException(e, next);
+			handle_TargetLostException(e, next);
 		}
 	}
 
-	private void handleTargetLostException(TargetLostException e, InstructionHandle next) {
+	private void handle_TargetLostException(TargetLostException e, InstructionHandle next) {
 		for (InstructionHandle target : e.getTargets()) {
 			for (InstructionTargeter destination : target.getTargeters()) {
 				destination.updateTarget(target, next);
@@ -142,82 +170,146 @@ public class ConstantFolder
 		}
 	}
 
+	
+	// private void handleGoTo(InstructionHandle handle, InstructionList instructionList) {
+	// 	if (deleteElseBranch){
+	// 		deleteElseBranch = false;
+	// 		GotoInstruction instruction = (GotoInstruction) handle.getInstruction();
+	// 		InstructionHandle targetHandle = instruction.getTarget();
+	// 		removeHandle(instructionList, handle, targetHandle.getPrev());
+	// 	}
+	// }
 
-	// Method that checks whether to delete the Else Branch of a IfInstruction, and deletes it if necessary.
-	private void handleGoTo(InstructionHandle handle, InstructionList instructionList) {
-		if (deleteElseBranch){
-			deleteElseBranch = false;
-			GotoInstruction instruction = (GotoInstruction) handle.getInstruction();
-			InstructionHandle targetHandle = instruction.getTarget();
-			removeHandle(instructionList, handle, targetHandle.getPrev());
-		}
-	}
-
-	private void handleLongComparison(InstructionHandle handle, InstructionList instructionList) {
-		if (blockOperationIfInLoop) return;
+	private void handleComparison(InstructionHandle handle, InstructionList instructionList) {
 
 		long first = (Long) valuesStack.pop();
 		long second = (Long) valuesStack.pop();
 
-		// LCMP returns -1, 0, 1.
 		int result = 0;
 		if (first > second) result = 1;
 		else if (first < second) result = -1;
 
-		removePreviousTwoLoadInstructions(instructionList);
-		handle.setInstruction(createLoadInstruction(result, cpgen));
-		loadInstructions.push(handle);
+		remove_handle(instructionList, this.loaded_instructions.remove(this.loaded_instructions.size() - 1));
+		remove_handle(instructionList, this.loaded_instructions.remove(this.loaded_instructions.size() - 1));
+
+		handle.setInstruction(build_load(result, this.cpgen));
+		this.loaded_instructions.add(handle);
 		valuesStack.push(result);
 	}
 
-	private void handleComparison(InstructionHandle handle, InstructionList instructionList) {
-		if (blockOperationIfInLoop) return;
 
-		IfInstruction comparisonInstruction = (IfInstruction) handle.getInstruction();
-
-		if (getComparisonOutcome(instructionList, comparisonInstruction)) {
-			removeHandle(instructionList, handle);
-			deleteElseBranch = true;
-		} else {
-			// if outcome is false then remove the comparison, and remove the if branch (all instructions to target).
-			InstructionHandle targetHandle = comparisonInstruction.getTarget();
-			removeHandle(instructionList, handle, targetHandle.getPrev());
-		}
-	}
 
 	private void handleStore(InstructionHandle handle) {
 		Number value = valuesStack.pop();
-		loadInstructions.pop();
-		displayLog("[STORE] Storing Value: " + value);
+		this.loaded_instructions.remove(this.loaded_instructions.size() - 1);
+
 		int key = ((StoreInstruction) handle.getInstruction()).getIndex();
-		variables.put(key, value);
+		this.stored_variables.put(key, value);
 	}
 
 	private void handleVariableLoad(InstructionHandle handle) {
 		int variableKey = ((LoadInstruction) handle.getInstruction()).getIndex();
-		valuesStack.push(variables.get(variableKey));
-		loadInstructions.push(handle);
-		displayLog("[LOAD_VARIABLE] Loaded Variable Value: " + valuesStack.peek());
-		// if not already blocking: block if this variable load is in a loop & the variable stores a value in the loop.
-		blockOperationIfInLoop = blockOperationIfInLoop || variableChangesInLoop(handle, variableKey);
-		displayLog("[BLOCK] Status: " + blockOperationIfInLoop);
+		valuesStack.push(this.stored_variables.get(variableKey));
+		this.loaded_instructions.add(handle);
 	}
 
 	private void handleLoad(InstructionHandle handle) {
-		valuesStack.push(getLoadConstantValue(handle.getInstruction(), cpgen));
-		loadInstructions.push(handle);
-		displayLog("[LOAD_CONSTANT] Loaded Constant Value: " + valuesStack.peek());
+		Instruction next = handle.getInstruction();
+		Number value_to_load = 0;
+		if (next instanceof LDC) {
+			value_to_load = (Number) ((LDC) next).getValue(this.cpgen); // Todo: ?
+		} 
+		else if (next instanceof LDC2_W) {
+			value_to_load = ((LDC2_W) next).getValue(this.cpgen); 
+		} 
+		else if (next instanceof SIPUSH) {
+			value_to_load = ((SIPUSH) next).getValue();
+		} 
+		else if (next instanceof ICONST){
+			value_to_load = ((ICONST) next).getValue();
+		} 
+		else if (next instanceof FCONST){
+			value_to_load = ((FCONST) next).getValue();
+		} 
+		else if (next instanceof DCONST){
+			value_to_load = ((DCONST) next).getValue();
+		} 
+		else if (next instanceof LCONST){
+			value_to_load = ((LCONST) next).getValue();
+		}
+		
+		valuesStack.push(value_to_load);
+		this.loaded_instructions.add(handle);
 	}
 
+	private static Number do_calc(Number first, Number second, Instruction nextInstruction){
+		Number result=0;
+
+		if (nextInstruction instanceof IADD){
+			result = first.intValue() + second.intValue();
+		} 
+		else if (nextInstruction instanceof ISUB){
+			result = first.intValue() - second.intValue();
+		} 
+		else if (nextInstruction instanceof IMUL){
+			result = first.intValue() * second.intValue();
+		} 
+		else if (nextInstruction instanceof IDIV){
+			result = first.intValue() / second.intValue();
+		}
+
+		else if (nextInstruction instanceof DADD){
+			result = first.doubleValue() + second.doubleValue();
+		} 
+		else if (nextInstruction instanceof DSUB){
+			result = first.doubleValue() - second.doubleValue();
+		} 
+		else if (nextInstruction instanceof DMUL){
+			result = first.doubleValue() * second.doubleValue();
+		} 
+		else if (nextInstruction instanceof DDIV){
+			result = first.doubleValue() / second.doubleValue();
+		}
+
+
+		else if (nextInstruction instanceof FADD){
+			result = first.floatValue() + second.floatValue();
+		} else if (nextInstruction instanceof FSUB){
+			result = first.floatValue() - second.floatValue();
+		} else if (nextInstruction instanceof FMUL){
+			result = first.floatValue() * second.floatValue();
+		} else if (nextInstruction instanceof FDIV){
+			result = first.floatValue() / second.floatValue();
+		}
+
+		else if (nextInstruction instanceof LADD){
+			result = first.longValue() + second.longValue();
+		} else if (nextInstruction instanceof LSUB){
+			result = first.longValue() - second.longValue();
+		} else if (nextInstruction instanceof LMUL){
+			result = first.longValue() * second.longValue();
+		} else if (nextInstruction instanceof LDIV){
+			result = first.longValue() / second.longValue();
+		}
+
+        return result;
+
+	}
+
+
+
 	private void handleArithmetic(InstructionHandle handle, InstructionList instructionList) {
-		if (blockOperationIfInLoop) return; // if block operation is true, then skip this instruction.
 
-		Number second = valuesStack.pop(); // last load is on the top of the stack.
+
+		Number second = valuesStack.pop(); 
 		Number first = valuesStack.pop();
-		valuesStack.push(performArithmeticOperation(first, second, handle.getInstruction()));
+		Number result = do_calc(first, second, handle.getInstruction());
+		valuesStack.push(result);
+		remove_handle(instructionList, this.loaded_instructions.remove(this.loaded_instructions.size() - 1));
+		remove_handle(instructionList, this.loaded_instructions.remove(this.loaded_instructions.size() - 1));
 
-		displayLog("[ARITHMETIC_OPERATION] Calculated Value: " + valuesStack.peek() + " Pushed Onto Stack.");
-		condenseOperationInstructions(instructionList, handle, valuesStack.peek()); // using peek because it needs to be in stack.
+		handle.setInstruction(build_load(valuesStack.peek(), this.cpgen));
+        this.loaded_instructions.add(handle);
 	}
 
 
@@ -234,7 +326,7 @@ public class ConstantFolder
 		}
 
 
-//		instructionList.setPositions(true);
+		// instructionList.setPositions(true);
 		mgen.setMaxStack();
 		mgen.setMaxLocals();
 		Method newMethod = mgen.getMethod();
@@ -250,7 +342,7 @@ public class ConstantFolder
 			method_process(m);
         }
 
-//        this.optimized = cgen.getJavaClass();
+       this.optimized = this.gen.getJavaClass();
     }
 
 
