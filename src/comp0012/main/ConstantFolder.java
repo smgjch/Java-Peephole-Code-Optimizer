@@ -55,7 +55,6 @@ public class ConstantFolder
 	private void handle_instruction(InstructionHandle handle, InstructionList instructionList){
 		Instruction instruction = handle.getInstruction();
 
-		// Operation Instructions (Instructions that use the previous 2 loaded values)
 		if (instruction instanceof ArithmeticInstruction){
 			handleArithmetic(handle, instructionList);
 		}
@@ -63,13 +62,6 @@ public class ConstantFolder
 		if (instruction instanceof LCMP){
 			handleComparison(handle, instructionList);
 		}
-		// if (instruction instanceof IfInstruction){
-		// 	handleComparison(handle, instructionList);
-		// }
-
-		// if (instruction instanceof GotoInstruction){
-		// 	handleGoTo(handle, instructionList);
-		// }
 
 		if (instruction instanceof StoreInstruction){
 			handleStore(handle);
@@ -100,13 +92,12 @@ public class ConstantFolder
 	}
 	
 
-	// Method that converts the value on the top of the stack to another type.
 	private void handleConversion(InstructionHandle handle, InstructionList instructionList) {
 		if (is_load_constant_instruction(this.loaded_instructions.get(this.loaded_instructions.size() - 1).getInstruction()) || !this.in_loop) {
 
 			valuesStack.push(to_value(handle.getInstruction(), valuesStack.pop()));
 
-// Todo: loaded_instructions
+		// Todo: loaded_instructions
 			InstructionHandle  instruction_removed = this.loaded_instructions.remove(this.loaded_instructions.size() - 1);
 			remove_handle(instructionList, instruction_removed); 
 
@@ -170,15 +161,6 @@ public class ConstantFolder
 		}
 	}
 
-	
-	// private void handleGoTo(InstructionHandle handle, InstructionList instructionList) {
-	// 	if (deleteElseBranch){
-	// 		deleteElseBranch = false;
-	// 		GotoInstruction instruction = (GotoInstruction) handle.getInstruction();
-	// 		InstructionHandle targetHandle = instruction.getTarget();
-	// 		removeHandle(instructionList, handle, targetHandle.getPrev());
-	// 	}
-	// }
 
 	private void handleComparison(InstructionHandle handle, InstructionList instructionList) {
 

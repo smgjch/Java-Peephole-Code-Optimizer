@@ -6,42 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="1197f017-7614-4882-801e-a25752b2343a" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$ConstantFinder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$Jump.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$JumpManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$Range.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$Variable.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$VariableFinder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder$VariableManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/ConstantFolder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$ConstantFinder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$Jump.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$JumpManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$Range.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$Variable.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$VariableFinder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder$VariableManager.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/ConstantFolder.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/main/Main.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/target/ConstantVariableFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/target/DynamicVariableFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/target/SimpleFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/classes/comp0012/target/SimpleFolding.j" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/comp0012/target/ConstantVariableFoldingTest.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/comp0012/target/DynamicVariableFoldingTest.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/test/comp0012/target/SimpleFoldingTest.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimised/classes/comp0012/target/ConstantVariableFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimised/classes/comp0012/target/DynamicVariableFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimised/classes/comp0012/target/SimpleFolding.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/out.class" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/comp0012/main/ConstantFolder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/comp0012/main/ConstantFolder.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/comp0012/main/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/comp0012/main/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/optimised/TEST-comp0012.target.ConstantVariableFoldingTest.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/optimised/TEST-comp0012.target.DynamicVariableFoldingTest.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/optimised/TEST-comp0012.target.SimpleFoldingTest.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.ConstantVariableFoldingTest.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.DynamicVariableFoldingTest.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.SimpleFoldingTest.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Result/ConstantVariableFolding.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Result/DynamicVariableFolding.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Result/SimpleFolding.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimised/classes/comp0012/target/ConstantVariableFolding.class" beforeDir="false" afterPath="$PROJECT_DIR$/optimised/classes/comp0012/target/ConstantVariableFolding.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optimised/classes/comp0012/target/DynamicVariableFolding.class" beforeDir="false" afterPath="$PROJECT_DIR$/optimised/classes/comp0012/target/DynamicVariableFolding.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-reports/optimised/TEST-comp0012.target.ConstantVariableFoldingTest.txt" beforeDir="false" afterPath="$PROJECT_DIR$/test-reports/optimised/TEST-comp0012.target.ConstantVariableFoldingTest.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.ConstantVariableFoldingTest.txt" beforeDir="false" afterPath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.ConstantVariableFoldingTest.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.DynamicVariableFoldingTest.txt" beforeDir="false" afterPath="$PROJECT_DIR$/test-reports/original/TEST-comp0012.target.DynamicVariableFoldingTest.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.java" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +47,7 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/src" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="nodejs_package_manager_path" value="npm" />
@@ -110,6 +83,7 @@
       <workItem from="1713318704346" duration="32000" />
       <workItem from="1713742254891" duration="2141000" />
       <workItem from="1713749642166" duration="1864000" />
+      <workItem from="1713757007044" duration="7000" />
     </task>
     <servers />
   </component>
