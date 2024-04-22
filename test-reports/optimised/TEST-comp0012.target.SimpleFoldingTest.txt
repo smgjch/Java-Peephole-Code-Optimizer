@@ -1,4 +1,10 @@
 Testsuite: comp0012.target.SimpleFoldingTest
+<<<<<<< HEAD
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 sec
+
+Testcase: testSimple took 0.001 sec
+=======
 Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 sec
 
 Testcase: testSimple took 0.002 sec
+>>>>>>> main

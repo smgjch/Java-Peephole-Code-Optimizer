@@ -16,11 +16,16 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 public class Main extends SimpleFileVisitor<Path> {
 
-    @Option(name="-in",required=true, usage="Root directory of the input classfiles")
-    private String inputRoot;
+     @Option(name="-in",required=true, usage="Root directory of the input classfiles")
+     private String inputRoot;
 
-    @Option(name="-out",required=true, usage="Root directory where optimised classfiles will be stored")
-    private String outputRoot;
+     @Option(name="-out",required=true, usage="Root directory where optimised classfiles will be stored")
+     private String outputRoot;
+
+//    private String inputRoot = "build/classes/comp0012/target/ConstantVariableFolding.class"; // Hard-coded input directory path
+//    private String outputRoot = "out.class"; // Hard-coded output directory path
+//
+
 
     private void parseArguments(String args[])
     {
