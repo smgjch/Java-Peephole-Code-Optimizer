@@ -349,6 +349,7 @@ public class ConstantFolder
     }
 
 
+
 	public void write(String optimisedFilePath)
 	{
 		this.optimize();
