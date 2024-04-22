@@ -317,16 +317,17 @@ public class ConstantFolder
 		Code method_code = m.getCode();
 		InstructionList instructionList = new InstructionList(method_code.getCode());
 
-		MethodGen mgen = new MethodGen(m.getAccessFlags(), m.getReturnType(), m.getArgumentTypes(),
-				null, m.getName(), this.gen.getClassName(), instructionList, this.cpgen);
+
 
 
 		for (InstructionHandle handle : instructionList.getInstructionHandles()) {
 			handle_instruction(handle, instructionList);
 		}
 
+		MethodGen mgen = new MethodGen(m.getAccessFlags(), m.getReturnType(), m.getArgumentTypes(),
+				null, m.getName(), this.gen.getClassName(), instructionList, this.cpgen);
 
-		// instructionList.setPositions(true);
+		instructionList.setPositions(true);
 		mgen.setMaxStack();
 		mgen.setMaxLocals();
 		Method newMethod = mgen.getMethod();
@@ -334,10 +335,10 @@ public class ConstantFolder
 	}
 
     private void optimize() {
-        ClassGen cgen = new ClassGen(original);
+        // ClassGen cgen = new ClassGen(original);
         // ConstantPoolGen cpgen = cgen.getConstantPool();
 
-        Method[] methods = cgen.getMethods();
+        Method[] methods = this.gen.getMethods();
         for (Method m : methods) {
 			method_process(m);
         }
